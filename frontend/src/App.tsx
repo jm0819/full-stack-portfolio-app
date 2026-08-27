@@ -1,113 +1,160 @@
 import { useEffect, useState } from 'react'
 
-function App() {
-  const [users, setUsers] = useState<any[]>([])
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+// We define this once so the whole app knows where to talk to the backend
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'
 
+function App() {
+  // Database State
+  const [items, setItems] = useState<any[]>([])
+  const [name, setName] = useState('')
+  const [category, setCategory] = useState('')
+  const [price, setPrice] = useState('')
+
+  // Order Calculator State
+  const [cart, setCart] = useState<any[]>([])
+
+  // 1. Fetch menu items from the database
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/users/')
+    // FIXED: Added fetch() and pointed it to the /items/ route
+    fetch(`${API_URL}/items/`) 
       .then(response => response.json())
-      .then(data => setUsers(data))
+      .then(data => setItems(data))
   }, [])
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  // 2. Add a new item to the database
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault()
-    const response = await fetch('http://127.0.0.1:8000/users/', {
+    // FIXED: Updated to use the dynamic API_URL
+    const response = await fetch(`${API_URL}/items/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email })
+      body: JSON.stringify({ name, category, price: parseFloat(price) })
     })
 
     if (response.ok) {
-      const newUser = await response.json()
-      setUsers([...users, newUser])
+      const newItem = await response.json()
+      setItems([...items, newItem])
       setName('')
-      setEmail('')
+      setCategory('')
+      setPrice('')
     } else {
-      alert("Error adding user! Email might already exist.")
+      alert("Error adding item!")
     }
   }
 
-  // NEW: Function to delete a user
-  const handleDeleteUser = async (id: int) => {
-    const response = await fetch(`http://127.0.0.1:8000/users/${id}`, {
+  // 3. Delete an item from the database
+  const handleDeleteItem = async (id: number) => {
+    // FIXED: Updated to use the dynamic API_URL
+    const response = await fetch(`${API_URL}/items/${id}`, {
       method: 'DELETE',
     })
 
     if (response.ok) {
-      // Instantly remove the deleted user from the screen
-      setUsers(users.filter(user => user.id !== id))
-    } else {
-      alert("Error deleting user!")
+      setItems(items.filter(item => item.id !== id))
+      // Remove it from the current order if it gets deleted from the menu
+      setCart(cart.filter(cartItem => cartItem.id !== id)) 
     }
   }
 
+  // 4. Calculator functions
+  const addToOrder = (item: any) => {
+    setCart([...cart, item])
+  }
+
+  const calculateTotal = () => {
+    return cart.reduce((total, item) => total + item.price, 0).toFixed(2)
+  }
+
   return (
-    // Upgraded: Soft gradient background for the whole page
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-gray-200 flex flex-col items-center py-12 font-sans px-4">
-      
-      {/* Upgraded: Gradient text for the header */}
-      <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-10 tracking-tight text-center drop-shadow-sm">
-        My Full-Stack App 🚀
+    <div className="min-h-screen bg-slate-50 font-sans p-8">
+      <h1 className="text-4xl font-extrabold text-slate-800 mb-8 text-center tracking-tight">
+        Digital Menu & Order System 🍔
       </h1>
-      
-      {/* Upgraded Form Card */}
-      <div className="bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-xl w-full max-w-md mb-12 border border-white/50">
-        <h3 className="text-2xl font-bold text-gray-800 mb-6 tracking-wide">Add a New User</h3>
-        <form onSubmit={handleAddUser} className="flex flex-col gap-5">
-          <input 
-            className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-            placeholder="Full Name" 
-            value={name} 
-            onChange={e => setName(e.target.value)} 
-            required 
-          />
-          <input 
-            className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-            placeholder="Email Address" 
-            type="email"
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            required 
-          />
-          <button 
-            type="submit" 
-            className="mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            Submit User
-          </button>
-        </form>
-      </div>
 
-      {/* Upgraded User List */}
-      <div className="w-full max-w-md">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 px-2">Database Records</h2>
-        <ul className="space-y-4">
-          {users.map((user) => (
-            <li key={user.id} className="bg-white p-5 rounded-2xl shadow-md border border-gray-100 flex justify-between items-center hover:shadow-lg transition-all group">
-              
-              <div className="flex flex-col">
-                <span className="font-bold text-gray-800 text-lg">{user.name}</span> 
-                <span className="text-gray-500 text-sm font-medium mt-1">{user.email}</span>
-              </div>
-
-              {/* NEW: Styled Delete Button */}
-              <button 
-                onClick={() => handleDeleteUser(user.id)}
-                className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2.5 rounded-xl transition-colors font-semibold text-sm border border-transparent hover:border-red-100"
-              >
-                Delete
-              </button>
-              
-            </li>
-          ))}
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        {/* LEFT COLUMN: Database Management */}
+        <div className="space-y-8">
           
-          {/* Empty State Message */}
-          {users.length === 0 && (
-            <p className="text-center text-gray-500 mt-8 font-medium">No users found. Add one above!</p>
-          )}
-        </ul>
+          {/* Add Item Form */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 className="text-xl font-bold text-slate-700 mb-4">Add Menu Item</h2>
+            <form onSubmit={handleAddItem} className="flex flex-col gap-4">
+              <input 
+                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Item Name (e.g. Cheeseburger)" 
+                value={name} onChange={e => setName(e.target.value)} required 
+              />
+              <input 
+                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Category (e.g. Main Course)" 
+                value={category} onChange={e => setCategory(e.target.value)} required 
+              />
+              <input 
+                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Price (e.g. 8.99)" 
+                type="number" step="0.01"
+                value={price} onChange={e => setPrice(e.target.value)} required 
+              />
+              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition-colors">
+                Save to Database
+              </button>
+            </form>
+          </div>
+
+          {/* Menu List */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 className="text-xl font-bold text-slate-700 mb-4">Current Menu</h2>
+            <ul className="space-y-3">
+              {items.map((item) => (
+                <li key={item.id} className="flex justify-between items-center p-3 hover:bg-slate-50 rounded-lg border border-transparent hover:border-slate-100 transition-all">
+                  <div>
+                    <span className="font-bold text-slate-800 block">{item.name}</span>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.category}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="font-bold text-green-600">${item.price.toFixed(2)}</span>
+                    <button onClick={() => addToOrder(item)} className="bg-slate-800 hover:bg-slate-900 text-white text-sm px-3 py-1 rounded-md transition-colors">
+                      Add
+                    </button>
+                    <button onClick={() => handleDeleteItem(item.id)} className="text-red-400 hover:text-red-600 text-sm font-semibold transition-colors">
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {items.length === 0 && <p className="text-slate-500 italic text-center">Menu is empty.</p>}
+            </ul>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Order Calculator */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit sticky top-8">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">Live Order</h2>
+          
+          <ul className="space-y-3 mb-6 min-h-[150px]">
+            {cart.map((cartItem, index) => (
+              <li key={index} className="flex justify-between items-center text-slate-700">
+                <span>{cartItem.name}</span>
+                <span className="font-medium">${cartItem.price.toFixed(2)}</span>
+              </li>
+            ))}
+            {cart.length === 0 && <p className="text-slate-400 italic text-center mt-8">No items added to order yet.</p>}
+          </ul>
+
+          <div className="border-t pt-4 flex justify-between items-center">
+            <span className="text-xl font-bold text-slate-800">Total</span>
+            <span className="text-3xl font-black text-green-600">${calculateTotal()}</span>
+          </div>
+          
+          <button 
+            onClick={() => setCart([])} 
+            className="w-full mt-6 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl transition-colors border border-red-200"
+          >
+            Clear Order
+          </button>
+        </div>
+
       </div>
     </div>
   )

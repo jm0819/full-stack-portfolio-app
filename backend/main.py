@@ -35,37 +35,29 @@ def check_database_connection(db: Session = Depends(get_db)):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-# 2. CREATE ROUTE: Save a new user into PostgreSQL
-@app.post("/users/", response_model=schemas.UserResponse)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Check if email already exists
-    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new database record
-    db_user = models.User(name=user.name, email=user.email)
-    db.add(db_user)
+# 2. CREATE ROUTE: Save a new menu item
+@app.post("/items/", response_model=schemas.MenuItemResponse)
+def create_item(item: schemas.MenuItemCreate, db: Session = Depends(get_db)):
+    db_item = models.MenuItem(name=item.name, category=item.category, price=item.price)
+    db.add(db_item)
     db.commit()
-    db.refresh(db_user)
-    return db_user
+    db.refresh(db_item)
+    return db_item
 
-# 3. READ ROUTE: Get all users from PostgreSQL
-@app.get("/users/", response_model=list[schemas.UserResponse])
-def read_users(db: Session = Depends(get_db)):
-    users = db.query(models.User).all()
-    return users
+# 3. READ ROUTE: Get all menu items
+@app.get("/items/", response_model=list[schemas.MenuItemResponse])
+def read_items(db: Session = Depends(get_db)):
+    items = db.query(models.MenuItem).all()
+    return items
 
-# 4. DELETE ROUTE: Remove a user from PostgreSQL
-@app.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    # Find the user by their ID
-    user = db.query(models.User).filter(models.User.id == user_id).first()
+# 4. DELETE ROUTE: Remove a menu item
+@app.delete("/items/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(models.MenuItem).filter(models.MenuItem.id == item_id).first()
     
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
     
-    # Delete the user and save changes
-    db.delete(user)
+    db.delete(item)
     db.commit()
-    return {"status": "success", "message": f"User {user_id} deleted"}
+    return {"status": "success", "message": f"Item {item_id} deleted"}

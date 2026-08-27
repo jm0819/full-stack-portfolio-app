@@ -1,15 +1,15 @@
 from pydantic import BaseModel
 
-# What data we expect when someone creates a new user
-class UserCreate(BaseModel):
+class MenuItemCreate(BaseModel):
     name: str
-    email: str
+    category: str
+    price: float
 
-# What data our API sends back (includes the database-generated ID)
-class UserResponse(BaseModel):
+class MenuItemResponse(BaseModel):
     id: int
     name: str
-    email: str
+    category: str
+    price: float
 
     class Config:
         from_attributes = True
